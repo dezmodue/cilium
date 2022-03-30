@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net"
@@ -272,7 +273,20 @@ func setupLogging(n *types.NetConf) error {
 	return logging.SetupLogging([]string{}, logOptions, "cilium-cni", n.EnableDebug)
 }
 
+func check(e error) {
+	if e != nil {
+		fmt.Errorf("error: %s", e)
+	}
+}
+
 func cmdAdd(args *skel.CmdArgs) (err error) {
+	f, err := os.OpenFile("/tmp/cilium-cni.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//f, err := os.Create("/tmp/cilium-cni.log")
+	check(err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+
 	var (
 		ipConfig *cniTypesVer.IPConfig
 		routes   []*cniTypes.Route
@@ -485,6 +499,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		}
 		res.IPs = append(res.IPs, ipConfig)
 		res.Routes = append(res.Routes, routes...)
+
 	}
 
 	if ipv4IsEnabled(ipam) {
@@ -498,6 +513,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		}
 		res.IPs = append(res.IPs, ipConfig)
 		res.Routes = append(res.Routes, routes...)
+		_, err = fmt.Fprintf(w, "MW res: %s\n", res)
 	}
 
 	switch conf.IpamMode {
@@ -517,6 +533,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 			}
 		}
 		macAddrStr, err = configureIface(ipam, args.IfName, &state)
+		_, err = fmt.Fprintf(w, "MW macAddrStr: %s\n", macAddrStr)
 		return err
 	}); err != nil {
 		err = fmt.Errorf("unable to configure interfaces in container namespace: %s", err)
@@ -528,6 +545,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		Mac:     macAddrStr,
 		Sandbox: args.Netns,
 	})
+	_, err = fmt.Fprintf(w, "MW res.Interfaces: %s\n", res.Interfaces)
 
 	// Add to the result the Interface as index of Interfaces
 	for i := range res.Interfaces {
@@ -543,6 +561,8 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		return
 	}
 
+	w.Flush()
+
 	logger.WithFields(logrus.Fields{
 		logfields.ContainerID: ep.ContainerID}).Debug("Endpoint successfully created")
 	return cniTypes.PrintResult(res, n.CNIVersion)
@@ -556,6 +576,14 @@ func cmdDel(args *skel.CmdArgs) error {
 	// Note about when to return errors: kubelet will retry the deletion
 	// for a long time. Therefore, only return an error for errors which
 	// are guaranteed to be recoverable.
+	f, err := os.OpenFile("/tmp/cilium-cni.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	check(err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+
+	_, err = fmt.Fprintf(w, "MW args.StdinData: %s\n", args)
+
 	n, err := types.LoadNetConf(args.StdinData)
 	if err != nil {
 		err = fmt.Errorf("unable to parse CNI configuration \"%s\": %s", args.StdinData, err)
@@ -635,6 +663,6 @@ func cmdDel(args *skel.CmdArgs) error {
 		log.WithError(err).Warningf("Unable to delete interface %s in namespace %q, will not delete interface", args.IfName, args.Netns)
 		// We are not returning an error as this is very unlikely to be recoverable
 	}
-
+	w.Flush()
 	return nil
 }
