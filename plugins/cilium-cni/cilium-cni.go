@@ -22,6 +22,7 @@ import (
 	"os"
 	"runtime"
 	"sort"
+	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
 	"github.com/cilium/cilium/pkg/addressing"
@@ -123,10 +124,10 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 	check(err)
 	defer f.Close()
 	w := bufio.NewWriter(f)
-	_, err = fmt.Fprintf(w, "MW addIPConfigToLink ip: %s\n", ip)
-	_, err = fmt.Fprintf(w, "MW addIPConfigToLink routes: %s\n", routes)
-	_, err = fmt.Fprintf(w, "MW addIPConfigToLink link: %s\n", link)
-	_, err = fmt.Fprintf(w, "MW addIPConfigToLink ifName: %s\n", ifName)
+	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink ip: %s\n", time.Now(), ip)
+	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink routes: %s\n", time.Now(), routes)
+	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink link: %s\n", time.Now(), link)
+	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink ifName: %s\n", time.Now(), ifName)
 	log.WithFields(logrus.Fields{
 		logfields.IPAddr:    ip,
 		"netLink":           logfields.Repr(link),
@@ -150,7 +151,7 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 	// Sort provided routes to make sure we apply any more specific
 	// routes first which may be used as nexthops in wider routes
 	sort.Sort(route.ByMask(routes))
-	_, err = fmt.Fprintf(w, "MW addIPConfigToLink sorted routes: %s\n", routes)
+	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink sorted routes: %s\n", time.Now(), routes)
 
 	for _, r := range routes {
 		log.WithField("route", logfields.Repr(r)).Debug("Adding route")
@@ -162,7 +163,7 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 			MTU:       r.MTU,
 		}
 
-		_, err = fmt.Fprintf(w, "MW addIPConfigToLink Adding route: %s\n", rt)
+		_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink Adding route: %s\n", time.Now(), rt)
 
 		if r.Nexthop == nil {
 			rt.Scope = netlink.SCOPE_LINK
@@ -239,8 +240,8 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 	check(err)
 	defer f.Close()
 	w := bufio.NewWriter(f)
-	_, err = fmt.Fprintf(w, "MW ipAddr: %s\n", ipAddr)
-	_, err = fmt.Fprintf(w, "MW state: %s\n", state)
+	_, err = fmt.Fprintf(w, "%s MW ipAddr: %s\n", time.Now(), ipAddr)
+	_, err = fmt.Fprintf(w, "%s MW state: %s\n", time.Now(), state)
 
 	if isIPv6 {
 		if state.IP6, err = addressing.NewCiliumIPv6(ipAddr); err != nil {
@@ -264,8 +265,8 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 		ip = state.IP4
 		gw = connector.IPv4Gateway(state.HostAddr)
 		ipVersion = "4"
-		_, err = fmt.Fprintf(w, "MW IP4 state: %s\n", state)
-		_, err = fmt.Fprintf(w, "MW gw: %s\n", gw)
+		_, err = fmt.Fprintf(w, "%s MW IP4 state: %s\n", time.Now(), state)
+		_, err = fmt.Fprintf(w, "%s MW gw: %s\n", time.Now(), gw)
 	}
 
 	rt := []*cniTypes.Route{}
@@ -537,7 +538,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		}
 		res.IPs = append(res.IPs, ipConfig)
 		res.Routes = append(res.Routes, routes...)
-		_, err = fmt.Fprintf(w, "MW res: %s\n", res)
+		_, err = fmt.Fprintf(w, "%s MW res: %s\n", time.Now(), res)
 	}
 
 	switch conf.IpamMode {
@@ -557,7 +558,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 			}
 		}
 		macAddrStr, err = configureIface(ipam, args.IfName, &state)
-		_, err = fmt.Fprintf(w, "MW macAddrStr: %s\n", macAddrStr)
+		_, err = fmt.Fprintf(w, "%s MW macAddrStr: %s\n", time.Now(), macAddrStr)
 		return err
 	}); err != nil {
 		err = fmt.Errorf("unable to configure interfaces in container namespace: %s", err)
@@ -569,7 +570,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		Mac:     macAddrStr,
 		Sandbox: args.Netns,
 	})
-	_, err = fmt.Fprintf(w, "MW res.Interfaces: %s\n", res.Interfaces)
+	_, err = fmt.Fprintf(w, "%s MW res.Interfaces: %s\n", time.Now(), res.Interfaces)
 
 	// Add to the result the Interface as index of Interfaces
 	for i := range res.Interfaces {
@@ -606,7 +607,7 @@ func cmdDel(args *skel.CmdArgs) error {
 	defer f.Close()
 	w := bufio.NewWriter(f)
 
-	_, err = fmt.Fprintf(w, "MW args.StdinData: %s\n", args)
+	_, err = fmt.Fprintf(w, "%s MW args.StdinData: %s\n", time.Now(), args)
 
 	n, err := types.LoadNetConf(args.StdinData)
 	if err != nil {
