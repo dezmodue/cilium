@@ -15,6 +15,7 @@
 package launch
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net"
@@ -229,6 +230,12 @@ type EndpointAdder interface {
 	AddEndpoint(owner regeneration.Owner, ep *endpoint.Endpoint, reason string) error
 }
 
+func checkerr(e error) {
+	if e != nil {
+		fmt.Errorf("error: %s", e)
+	}
+}
+
 // LaunchAsEndpoint launches the cilium-health agent in a nested network
 // namespace and attaches it to Cilium the same way as any other endpoint, but
 // with special reserved labels.
@@ -243,6 +250,12 @@ func LaunchAsEndpoint(baseCtx context.Context,
 	proxy endpoint.EndpointProxy,
 	allocator cache.IdentityAllocator,
 	routingConfig routingConfigurer) (*Client, error) {
+
+	f, err := os.OpenFile("/tmp/cilium.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	checkerr(err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
 
 	var (
 		cmd  = launcher.Launcher{}
@@ -347,6 +360,7 @@ func LaunchAsEndpoint(baseCtx context.Context,
 
 	if option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMAlibabaCloud {
 		// ENI mode does not support IPv6.
+		_, err = fmt.Fprintf(w, "%s MW endpoint.LaunchAsEndpoint, routingConfig: %s\n", time.Now(), routingConfig)
 		if err := routingConfig.Configure(
 			healthIP,
 			mtuConfig.GetDeviceMTU(),
@@ -373,6 +387,8 @@ func LaunchAsEndpoint(baseCtx context.Context,
 	// Initialize the health client to talk to this instance.
 	client := &Client{host: "http://" + net.JoinHostPort(healthIP.String(), fmt.Sprintf("%d", healthDefaults.HTTPPathPort))}
 	metrics.SubprocessStart.WithLabelValues(ciliumHealth).Inc()
+
+	w.Flush()
 
 	return client, nil
 }

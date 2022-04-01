@@ -64,7 +64,7 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 	defer f.Close()
 	w := bufio.NewWriter(f)
 
-	_, err = fmt.Fprintf(w, "%s MW Configure ip,mtu: %s, %s\n", time.Now(), ip, mtu)
+	_, err = fmt.Fprintf(w, "%s MW routing.Configure, routingInfo: %s\n", time.Now(), info)
 
 	if ip.To4() == nil {
 		log.WithFields(logrus.Fields{
