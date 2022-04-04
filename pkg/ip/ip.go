@@ -22,6 +22,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+  "path/filepath"
 	"sort"
 	"time"
 )
@@ -482,7 +483,9 @@ func mergeAdjacentCIDRs(ranges []*netWithRange) []*netWithRange {
 // coalesceRanges converts ranges into an equivalent list of net.IPNets.
 // All IPs in ranges should be of the same address family (IPv4 or IPv6).
 func coalesceRanges(ranges []*netWithRange) []*net.IPNet {
-	f, err := os.OpenFile("/tmp/cilium.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	checkerr(err)
 	defer f.Close()
@@ -529,7 +532,9 @@ func checkerr(e error) {
 // Note: this algorithm was ported from the Python library netaddr.
 // https://github.com/drkjam/netaddr .
 func CoalesceCIDRs(cidrs []*net.IPNet) ([]*net.IPNet, []*net.IPNet) {
-	f, err := os.OpenFile("/tmp/cilium.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	checkerr(err)
 	defer f.Close()

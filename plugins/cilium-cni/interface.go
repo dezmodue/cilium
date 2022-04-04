@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+  "path/filepath"
 	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
@@ -35,8 +36,9 @@ func checkerr(e error) {
 }
 
 func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, conf models.DaemonConfigurationStatus) error {
-
-	f, err := os.OpenFile("/tmp/cilium-cni.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	checkerr(err)
 	defer f.Close()

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+  "path/filepath"
 	"time"
 
 	"github.com/cilium/cilium/pkg/datapath/linux/linux_defaults"
@@ -58,7 +59,9 @@ func check(e error) {
 // info: The interface routing info used to create rules and routes.
 // mtu: The interface MTU.
 func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
-	f, err := os.OpenFile("/tmp/cilium.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()

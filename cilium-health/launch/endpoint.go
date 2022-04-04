@@ -250,8 +250,9 @@ func LaunchAsEndpoint(baseCtx context.Context,
 	proxy endpoint.EndpointProxy,
 	allocator cache.IdentityAllocator,
 	routingConfig routingConfigurer) (*Client, error) {
-
-	f, err := os.OpenFile("/tmp/cilium.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	checkerr(err)
 	defer f.Close()

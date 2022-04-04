@@ -17,6 +17,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"path/filepath"
 	"fmt"
 	"net"
 	"os"
@@ -119,7 +120,9 @@ func releaseIP(client *client.Client, ip string) {
 }
 
 func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlink.Link, ifName string) error {
-	f, err := os.OpenFile("/tmp/cilium-cni.log",
+	prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+	f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()
@@ -234,8 +237,9 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 		ipVersion string
 		ip        addressing.CiliumIP
 	)
-
-	f, err := os.OpenFile("/tmp/cilium-cni.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()
@@ -306,7 +310,9 @@ func check(e error) {
 }
 
 func cmdAdd(args *skel.CmdArgs) (err error) {
-	f, err := os.OpenFile("/tmp/cilium-cni.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()
@@ -601,7 +607,9 @@ func cmdDel(args *skel.CmdArgs) error {
 	// Note about when to return errors: kubelet will retry the deletion
 	// for a long time. Therefore, only return an error for errors which
 	// are guaranteed to be recoverable.
-	f, err := os.OpenFile("/tmp/cilium-cni.log",
+  prgname := filepath.Base(os.Args[0])
+  filename := "/tmp/"+prgname+".log"
+  f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()
