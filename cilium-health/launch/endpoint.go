@@ -250,9 +250,14 @@ func LaunchAsEndpoint(baseCtx context.Context,
 	proxy endpoint.EndpointProxy,
 	allocator cache.IdentityAllocator,
 	routingConfig routingConfigurer) (*Client, error) {
-  prgname := filepath.Base(os.Args[0])
-  filename := "/tmp/"+prgname+".log"
-  f, err := os.OpenFile(filename,
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	checkerr(err)
 	defer f.Close()

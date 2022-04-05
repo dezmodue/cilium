@@ -15,8 +15,11 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -204,7 +207,26 @@ func (d *Daemon) allocateRouterIPv6(family datapath.NodeAddressingFamily) (net.I
 	}
 }
 
+func checkerr(e error) {
+	if e != nil {
+		fmt.Errorf("error: %s", e)
+	}
+}
+
 func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (routerIP net.IP, err error) {
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, err := os.OpenFile(filename,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	checkerr(err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+
 	// Blacklist allocation of the external IP
 	d.ipam.BlacklistIP(family.PrimaryExternal(), "node-ip")
 
@@ -239,15 +261,17 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 	}
 	if (option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMAlibabaCloud) && result != nil {
 		var routingInfo *linuxrouting.RoutingInfo
+		_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, result.CIDRs: %s\n", time.Now(), result.CIDRs)
 		routingInfo, err = linuxrouting.NewRoutingInfo(result.GatewayIP, result.CIDRs,
 			result.PrimaryMAC, result.InterfaceNumber, option.Config.EnableIPv4Masquerade)
 		if err != nil {
 			err = fmt.Errorf("failed to create router info %w", err)
 			return
 		}
+		_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, routingInfo: %s\n", time.Now(), routingInfo)
 		node.SetRouterInfo(routingInfo)
 	}
-
+	w.Flush()
 	return
 }
 

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-  "path/filepath"
+	"path/filepath"
 	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
@@ -36,9 +36,14 @@ func checkerr(e error) {
 }
 
 func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, conf models.DaemonConfigurationStatus) error {
-  prgname := filepath.Base(os.Args[0])
-  filename := "/tmp/"+prgname+".log"
-  f, err := os.OpenFile(filename,
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	checkerr(err)
 	defer f.Close()
@@ -50,7 +55,6 @@ func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, 
 		_, err = fmt.Fprintf(w, "%s MW interfaceAdd, ipam.Gateway is empty: %s\n", time.Now(), ipam.Gateway)
 		return nil
 	}
-
 
 	var masq bool
 	if ipConfig.Version == "4" {

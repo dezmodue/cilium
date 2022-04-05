@@ -17,10 +17,10 @@ package main
 import (
 	"bufio"
 	"context"
-	"path/filepath"
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"time"
@@ -121,7 +121,12 @@ func releaseIP(client *client.Client, ip string) {
 
 func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlink.Link, ifName string) error {
 	prgname := filepath.Base(os.Args[0])
-  filename := "/tmp/"+prgname+".log"
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
 	f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
@@ -237,9 +242,14 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 		ipVersion string
 		ip        addressing.CiliumIP
 	)
-  prgname := filepath.Base(os.Args[0])
-  filename := "/tmp/"+prgname+".log"
-  f, err := os.OpenFile(filename,
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()
@@ -310,9 +320,14 @@ func check(e error) {
 }
 
 func cmdAdd(args *skel.CmdArgs) (err error) {
-  prgname := filepath.Base(os.Args[0])
-  filename := "/tmp/"+prgname+".log"
-  f, err := os.OpenFile(filename,
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()
@@ -607,9 +622,14 @@ func cmdDel(args *skel.CmdArgs) error {
 	// Note about when to return errors: kubelet will retry the deletion
 	// for a long time. Therefore, only return an error for errors which
 	// are guaranteed to be recoverable.
-  prgname := filepath.Base(os.Args[0])
-  filename := "/tmp/"+prgname+".log"
-  f, err := os.OpenFile(filename,
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, err := os.OpenFile(filename,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
 	defer f.Close()
