@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/cilium/pkg/datapath"
 	linuxrouting "github.com/cilium/cilium/pkg/datapath/linux/routing"
 	"github.com/cilium/cilium/pkg/defaults"
+	iputil "github.com/cilium/cilium/pkg/ip"
 	"github.com/cilium/cilium/pkg/ipam"
 	ipamOption "github.com/cilium/cilium/pkg/ipam/option"
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -238,6 +239,7 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 	routerIP = family.Router()
 	if routerIP != nil {
 		result, err = d.ipam.AllocateIPWithoutSyncUpstream(routerIP, "router")
+		_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, routerIP was NOT nil, result: %s\n", time.Now(), result)
 		if err != nil {
 			log.Warn("Router IP could not be re-allocated. Need to re-allocate. This will cause brief network disruption")
 
@@ -245,7 +247,7 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 			// This indicates that the allocation range has changed.
 			deleteHostDevice()
 
-			// force re-allocation of the router IP
+			// force re-allocation of the router I
 			routerIP = nil
 		}
 	}
@@ -253,15 +255,16 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 	if routerIP == nil {
 		family := ipam.DeriveFamily(family.PrimaryExternal())
 		result, err = d.ipam.AllocateNextFamilyWithoutSyncUpstream(family, "router")
+		_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, routerIP was nil, result: %s\n", time.Now(), result)
 		if err != nil {
 			err = fmt.Errorf("Unable to allocate router IP for family %s: %s", family, err)
 			return
 		}
 		routerIP = result.IP
 	}
+
 	if (option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMAlibabaCloud) && result != nil {
 		var routingInfo *linuxrouting.RoutingInfo
-		_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, result.CIDRs: %s\n", time.Now(), result.CIDRs)
 		routingInfo, err = linuxrouting.NewRoutingInfo(result.GatewayIP, result.CIDRs,
 			result.PrimaryMAC, result.InterfaceNumber, option.Config.EnableIPv4Masquerade)
 		if err != nil {
@@ -271,15 +274,68 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 		_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, routingInfo: %s\n", time.Now(), routingInfo)
 		node.SetRouterInfo(routingInfo)
 	}
+
+	cidrs := make([]*net.IPNet, 0, len(result.CIDRs))
+	for _, k := range result.CIDRs {
+		var s net.IPNet
+		ip, mask, _ := net.ParseCIDR(k)
+		s.IP = ip
+		s.Mask = mask.Mask
+		_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, first loop, s.IP s.Mask: %s %s\n", time.Now(), s.IP, s.Mask)
+		cidrs = append(cidrs, &s)
+	}
+	_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, cidrs before Coalesce, cidrs: %s\n", time.Now(), cidrs)
+	resultcidr, _ := iputil.CoalesceCIDRs(cidrs)
+	_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, resultcidr after Coalesce, resultcidr, len(resultcidr): %s %s\n", time.Now(), resultcidr, len(resultcidr))
+	newresult := make([]string, len(resultcidr))
+	for i, k := range resultcidr {
+		newresult[i] = k.String()
+	}
+	_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, result after Coalesce, newresult: %s\n", time.Now(), newresult)
+	result.CIDRs = newresult
+	_, err = fmt.Fprintf(w, "%s MW ipam.allocateDatapathIPs, result after Coalesce, result: %s\n", time.Now(), result)
 	w.Flush()
 	return
 }
 
 func (d *Daemon) allocateHealthIPs() error {
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, err := os.OpenFile(filename,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	checkerr(err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+
 	bootstrapStats.healthCheck.Start()
 	if option.Config.EnableHealthChecking && option.Config.EnableEndpointHealthChecking {
 		if option.Config.EnableIPv4 {
 			result, err := d.ipam.AllocateNextFamilyWithoutSyncUpstream(ipam.IPv4, "health")
+			cidrs := make([]*net.IPNet, 0, len(result.CIDRs))
+			for _, k := range result.CIDRs {
+				var s net.IPNet
+				ip, mask, _ := net.ParseCIDR(k)
+				s.IP = ip
+				s.Mask = mask.Mask
+				_, err = fmt.Fprintf(w, "%s MW ipam.allocateHealthIPs, first loop, s.IP s.Mask: %s %s\n", time.Now(), s.IP, s.Mask)
+				cidrs = append(cidrs, &s)
+			}
+			_, err = fmt.Fprintf(w, "%s MW ipam.allocateHealthIPs, cidrs before Coalesce, cidrs: %s\n", time.Now(), cidrs)
+			resultcidr, _ := iputil.CoalesceCIDRs(cidrs)
+			_, err = fmt.Fprintf(w, "%s MW ipam.allocateHealthIPs, resultcidr after Coalesce, resultcidr, len(resultcidr): %s %s\n", time.Now(), resultcidr, len(resultcidr))
+			newresult := make([]string, len(resultcidr))
+			for i, k := range resultcidr {
+				newresult[i] = k.String()
+			}
+			_, err = fmt.Fprintf(w, "%s MW ipam.allocateHealthIPs, result after Coalesce, newresult: '%s'\n", time.Now(), newresult)
+			result.CIDRs = newresult
+			_, err = fmt.Fprintf(w, "%s MW ipam.allocateHealthIPs, result after Coalesce, result: %s\n", time.Now(), result)
+
 			if err != nil {
 				return fmt.Errorf("unable to allocate health IPs: %s,see https://cilium.link/ipam-range-full", err)
 			}
@@ -311,6 +367,7 @@ func (d *Daemon) allocateHealthIPs() error {
 		}
 	}
 	bootstrapStats.healthCheck.End(true)
+	w.Flush()
 	return nil
 }
 
@@ -432,7 +489,21 @@ func (d *Daemon) startIPAM() {
 }
 
 func (d *Daemon) parseHealthEndpointInfo(result *ipam.AllocationResult) error {
+	prgname := filepath.Base(os.Args[0])
+	var filename string
+	if prgname == "cilium-agent" {
+		filename = "/host/opt/cni/bin/" + prgname + ".log"
+	} else {
+		filename = "/opt/cni/bin/" + prgname + ".log"
+	}
+	f, er := os.OpenFile(filename,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	checkerr(er)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+
 	var err error
+	_, er = fmt.Fprintf(w, "%s MW parseHealthEndpointInfo, ipam.result: %s\n", time.Now(), result)
 	d.healthEndpointRouting, err = linuxrouting.NewRoutingInfo(
 		result.GatewayIP,
 		result.CIDRs,
@@ -440,5 +511,6 @@ func (d *Daemon) parseHealthEndpointInfo(result *ipam.AllocationResult) error {
 		result.InterfaceNumber,
 		option.Config.EnableIPv4Masquerade,
 	)
+	w.Flush()
 	return err
 }
