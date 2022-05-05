@@ -243,6 +243,7 @@ func LaunchAsEndpoint(baseCtx context.Context,
 	proxy endpoint.EndpointProxy,
 	allocator cache.IdentityAllocator,
 	routingConfig routingConfigurer) (*Client, error) {
+
 	var (
 		cmd  = launcher.Launcher{}
 		info = &models.EndpointChangeRequest{

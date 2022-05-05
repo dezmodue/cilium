@@ -15,16 +15,11 @@
 package ip
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"math/big"
 	"net"
-	"os"
-	"path/filepath"
 	"sort"
-	"time"
 )
 
 const (
@@ -501,12 +496,6 @@ func coalesceRanges(ranges []*netWithRange) []*net.IPNet {
 	return coalescedCIDRs
 }
 
-func checkerr(e error) {
-	if e != nil {
-		fmt.Errorf("error: %s", e)
-	}
-}
-
 // CoalesceCIDRs transforms the provided list of CIDRs into the most-minimal
 // equivalent set of IPv4 and IPv6 CIDRs.
 // It removes CIDRs that are subnets of other CIDRs in the list, and groups
@@ -528,6 +517,7 @@ func CoalesceCIDRs(cidrs []*net.IPNet) ([]*net.IPNet, []*net.IPNet) {
 			ranges6 = append(ranges6, &newNetToRange)
 		}
 	}
+
 	return coalesceRanges(mergeAdjacentCIDRs(ranges4)), coalesceRanges(mergeAdjacentCIDRs(ranges6))
 }
 

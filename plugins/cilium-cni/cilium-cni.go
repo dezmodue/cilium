@@ -140,9 +140,9 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 	// Sort provided routes to make sure we apply any more specific
 	// routes first which may be used as nexthops in wider routes
 	sort.Sort(route.ByMask(routes))
+
 	for _, r := range routes {
 		log.WithField("route", logfields.Repr(r)).Debug("Adding route")
-
 		rt := &netlink.Route{
 			LinkIndex: link.Attrs().Index,
 			Scope:     netlink.SCOPE_UNIVERSE,
@@ -252,8 +252,6 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 		return nil, nil, fmt.Errorf("Invalid gateway address: %s", gw)
 	}
 
-	w.Flush()
-
 	return &cniTypesVer.IPConfig{
 		Address: *ip.EndpointPrefix(),
 		Gateway: gwIP,
@@ -270,12 +268,6 @@ func setupLogging(n *types.NetConf) error {
 		logging.FormatOpt: f,
 	}
 	return logging.SetupLogging([]string{}, logOptions, "cilium-cni", n.EnableDebug)
-}
-
-func check(e error) {
-	if e != nil {
-		fmt.Errorf("error: %s", e)
-	}
 }
 
 func cmdAdd(args *skel.CmdArgs) (err error) {
@@ -491,7 +483,6 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		}
 		res.IPs = append(res.IPs, ipConfig)
 		res.Routes = append(res.Routes, routes...)
-
 	}
 
 	if ipv4IsEnabled(ipam) {

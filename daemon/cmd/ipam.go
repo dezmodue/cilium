@@ -15,11 +15,8 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -227,7 +224,7 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 			// This indicates that the allocation range has changed.
 			deleteHostDevice()
 
-			// force re-allocation of the router I
+			// force re-allocation of the router IP
 			routerIP = nil
 		}
 	}
@@ -241,7 +238,6 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 		}
 		routerIP = result.IP
 	}
-
 	if (option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMAlibabaCloud) && result != nil {
 		var routingInfo *linuxrouting.RoutingInfo
 		routingInfo, err = linuxrouting.NewRoutingInfo(result.GatewayIP, result.CIDRs,

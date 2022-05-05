@@ -77,7 +77,6 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 	}
 
 	var egressPriority, tableID int
-
 	if compat {
 		egressPriority = linux_defaults.RulePriorityEgress
 		tableID = ifindex
@@ -89,7 +88,6 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 	if info.Masquerade {
 		// Lookup a VPC specific table for all traffic from an endpoint to the
 		// CIDR configured for the VPC on which the endpoint has the IP on.
-
 		for _, cidr := range info.IPv4CIDRs {
 			if err := route.ReplaceRule(route.Rule{
 				Priority: egressPriority,
@@ -132,6 +130,7 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 	}); err != nil {
 		return fmt.Errorf("unable to add L2 nexthop route: %s", err)
 	}
+
 	return nil
 }
 
