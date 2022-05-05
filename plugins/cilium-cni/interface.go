@@ -25,7 +25,6 @@ import (
 	"github.com/containernetworking/cni/pkg/types/current"
 )
 
-
 func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, conf models.DaemonConfigurationStatus) error {
 	// If the gateway IP is not available, it is already set up
 	if ipam.Gateway == "" {
@@ -57,6 +56,7 @@ func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, 
 	for _, cidr := range ipv4CIDRs {
 		cidrs = append(cidrs, cidr.String())
 	}
+
 	routingInfo, err := linuxrouting.NewRoutingInfo(
 		ipam.Gateway,
 		cidrs,

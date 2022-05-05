@@ -635,6 +635,6 @@ func cmdDel(args *skel.CmdArgs) error {
 		log.WithError(err).Warningf("Unable to delete interface %s in namespace %q, will not delete interface", args.IfName, args.Netns)
 		// We are not returning an error as this is very unlikely to be recoverable
 	}
-	
+
 	return nil
 }
