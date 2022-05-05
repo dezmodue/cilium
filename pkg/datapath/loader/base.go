@@ -18,6 +18,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/cilium/cilium/pkg/bpf"
 	"github.com/cilium/cilium/pkg/cgroups"
 	"github.com/cilium/cilium/pkg/command/exec"
@@ -40,12 +45,6 @@ import (
 	"github.com/cilium/cilium/pkg/sysctl"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
-	"net"
-	"os"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"time"
 )
 
 const (
