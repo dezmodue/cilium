@@ -493,6 +493,7 @@ func coalesceRanges(ranges []*netWithRange) []*net.IPNet {
 			coalescedCIDRs = append(coalescedCIDRs, rangeCIDRs...)
 		}
 	}
+
 	return coalescedCIDRs
 }
 
@@ -506,6 +507,7 @@ func coalesceRanges(ranges []*netWithRange) []*net.IPNet {
 // Note: this algorithm was ported from the Python library netaddr.
 // https://github.com/drkjam/netaddr .
 func CoalesceCIDRs(cidrs []*net.IPNet) ([]*net.IPNet, []*net.IPNet) {
+	
 	ranges4 := []*netWithRange{}
 	ranges6 := []*netWithRange{}
 

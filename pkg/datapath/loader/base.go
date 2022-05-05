@@ -185,6 +185,7 @@ func addENIRules(sysSettings []sysctl.Setting, nodeAddressing datapath.NodeAddre
 			return nil, fmt.Errorf("unable to install ip rule for cilium_host: %w", err)
 		}
 	}
+	
 	return retSettings, nil
 }
 

@@ -25,11 +25,6 @@ import (
 	"github.com/containernetworking/cni/pkg/types/current"
 )
 
-func checkerr(e error) {
-	if e != nil {
-		fmt.Errorf("error: %s", e)
-	}
-}
 
 func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, conf models.DaemonConfigurationStatus) error {
 	// If the gateway IP is not available, it is already set up
@@ -54,7 +49,6 @@ func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, 
 		}
 		allCIDRs = append(allCIDRs, cidr)
 	}
-
 	// Coalesce CIDRs into minimum set needed for route rules
 	// The routes set up here will be cleaned up by linuxrouting.Delete.
 	// Therefore the code here should be kept in sync with the deletion code.

@@ -163,6 +163,7 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -218,6 +219,7 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 		ipVersion string
 		ip        addressing.CiliumIP
 	)
+
 	if isIPv6 {
 		if state.IP6, err = addressing.NewCiliumIPv6(ipAddr); err != nil {
 			return nil, nil, err
@@ -633,5 +635,6 @@ func cmdDel(args *skel.CmdArgs) error {
 		log.WithError(err).Warningf("Unable to delete interface %s in namespace %q, will not delete interface", args.IfName, args.Netns)
 		// We are not returning an error as this is very unlikely to be recoverable
 	}
+	
 	return nil
 }
