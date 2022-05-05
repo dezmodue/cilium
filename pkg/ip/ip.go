@@ -483,41 +483,21 @@ func mergeAdjacentCIDRs(ranges []*netWithRange) []*netWithRange {
 // coalesceRanges converts ranges into an equivalent list of net.IPNets.
 // All IPs in ranges should be of the same address family (IPv4 or IPv6).
 func coalesceRanges(ranges []*netWithRange) []*net.IPNet {
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	checkerr(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-	_, err = fmt.Fprintf(w, "%s MW coalesceRanges, ranges: %s\n", time.Now(), ranges)
 	coalescedCIDRs := []*net.IPNet{}
 	// Create CIDRs from ranges that were combined if needed.
 	for _, netRange := range ranges {
-		_, err = fmt.Fprintf(w, "%s MW coalesceRanges, netRange: %s\n", time.Now(), netRange)
 		// If the Network field of netWithRange wasn't modified, then we can
 		// add it to the list which we will return, as it cannot be joined with
 		// any other CIDR in the list.
 		if netRange.Network != nil {
-			_, err = fmt.Fprintf(w, "%s MW coalesceRanges, netRange.Network is not nil: %s\n", time.Now(), netRange.Network)
 			coalescedCIDRs = append(coalescedCIDRs, netRange.Network)
-			_, err = fmt.Fprintf(w, "%s MW coalesceRanges, coalescedCIDRs: %s\n", time.Now(), coalescedCIDRs)
 		} else {
 			// We have joined two ranges together, so we need to find the new CIDRs
 			// that represent this range.
-			_, err = fmt.Fprintf(w, "%s MW coalesceRanges, netRange.Network is nil: %s\n", time.Now(), netRange.Network)
 			rangeCIDRs := rangeToCIDRs(*netRange.First, *netRange.Last)
-			_, err = fmt.Fprintf(w, "%s MW coalesceRanges, rangeCIDRs: %s\n", time.Now(), rangeCIDRs)
 			coalescedCIDRs = append(coalescedCIDRs, rangeCIDRs...)
-			_, err = fmt.Fprintf(w, "%s MW coalesceRanges, coalescedCIDRs: %s\n", time.Now(), coalescedCIDRs)
 		}
 	}
-	w.Flush()
 	return coalescedCIDRs
 }
 
@@ -537,25 +517,10 @@ func checkerr(e error) {
 // Note: this algorithm was ported from the Python library netaddr.
 // https://github.com/drkjam/netaddr .
 func CoalesceCIDRs(cidrs []*net.IPNet) ([]*net.IPNet, []*net.IPNet) {
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	checkerr(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-
 	ranges4 := []*netWithRange{}
 	ranges6 := []*netWithRange{}
 
-	_, err = fmt.Fprintf(w, "%s MW Coalesce, cidrs: %s\n", time.Now(), cidrs)
 	for _, network := range cidrs {
-		_, err = fmt.Fprintf(w, "%s MW Coalesce, network: %s\n", time.Now(), network)
 		newNetToRange := ipNetToRange(*network)
 		if network.IP.To4() != nil {
 			ranges4 = append(ranges4, &newNetToRange)
@@ -563,8 +528,6 @@ func CoalesceCIDRs(cidrs []*net.IPNet) ([]*net.IPNet, []*net.IPNet) {
 			ranges6 = append(ranges6, &newNetToRange)
 		}
 	}
-	_, err = fmt.Fprintf(w, "%s MW Coalesce, ranges4: %v\n", time.Now(), ranges4)
-	w.Flush()
 	return coalesceRanges(mergeAdjacentCIDRs(ranges4)), coalesceRanges(mergeAdjacentCIDRs(ranges6))
 }
 

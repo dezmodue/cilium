@@ -15,15 +15,12 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
-	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
 	"github.com/cilium/cilium/pkg/addressing"
@@ -120,22 +117,6 @@ func releaseIP(client *client.Client, ip string) {
 }
 
 func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlink.Link, ifName string) error {
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	check(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink ip: %s\n", time.Now(), ip)
-	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink routes: %s\n", time.Now(), routes)
-	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink link: %s\n", time.Now(), link)
-	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink ifName: %s\n", time.Now(), ifName)
 	log.WithFields(logrus.Fields{
 		logfields.IPAddr:    ip,
 		"netLink":           logfields.Repr(link),
@@ -159,8 +140,6 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 	// Sort provided routes to make sure we apply any more specific
 	// routes first which may be used as nexthops in wider routes
 	sort.Sort(route.ByMask(routes))
-	_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink sorted routes: %s\n", time.Now(), routes)
-
 	for _, r := range routes {
 		log.WithField("route", logfields.Repr(r)).Debug("Adding route")
 
@@ -170,8 +149,6 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 			Dst:       &r.Prefix,
 			MTU:       r.MTU,
 		}
-
-		_, err = fmt.Fprintf(w, "%s MW addIPConfigToLink Adding route: %s\n", time.Now(), rt)
 
 		if r.Nexthop == nil {
 			rt.Scope = netlink.SCOPE_LINK
@@ -186,7 +163,6 @@ func addIPConfigToLink(ip addressing.CiliumIP, routes []route.Route, link netlin
 			}
 		}
 	}
-	w.Flush()
 	return nil
 }
 
@@ -242,21 +218,6 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 		ipVersion string
 		ip        addressing.CiliumIP
 	)
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	check(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-	_, err = fmt.Fprintf(w, "%s MW ipAddr: %s\n", time.Now(), ipAddr)
-	_, err = fmt.Fprintf(w, "%s MW state: %s\n", time.Now(), state)
-
 	if isIPv6 {
 		if state.IP6, err = addressing.NewCiliumIPv6(ipAddr); err != nil {
 			return nil, nil, err
@@ -279,8 +240,6 @@ func prepareIP(ipAddr string, isIPv6 bool, state *CmdState, mtu int) (*cniTypesV
 		ip = state.IP4
 		gw = connector.IPv4Gateway(state.HostAddr)
 		ipVersion = "4"
-		_, err = fmt.Fprintf(w, "%s MW IP4 state: %s\n", time.Now(), state)
-		_, err = fmt.Fprintf(w, "%s MW gw: %s\n", time.Now(), gw)
 	}
 
 	rt := []*cniTypes.Route{}
@@ -320,19 +279,6 @@ func check(e error) {
 }
 
 func cmdAdd(args *skel.CmdArgs) (err error) {
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	check(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-
 	var (
 		ipConfig *cniTypesVer.IPConfig
 		routes   []*cniTypes.Route
@@ -559,7 +505,6 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		}
 		res.IPs = append(res.IPs, ipConfig)
 		res.Routes = append(res.Routes, routes...)
-		_, err = fmt.Fprintf(w, "%s MW res: %s\n", time.Now(), res)
 	}
 
 	switch conf.IpamMode {
@@ -579,7 +524,6 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 			}
 		}
 		macAddrStr, err = configureIface(ipam, args.IfName, &state)
-		_, err = fmt.Fprintf(w, "%s MW macAddrStr: %s\n", time.Now(), macAddrStr)
 		return err
 	}); err != nil {
 		err = fmt.Errorf("unable to configure interfaces in container namespace: %s", err)
@@ -591,7 +535,6 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		Mac:     macAddrStr,
 		Sandbox: args.Netns,
 	})
-	_, err = fmt.Fprintf(w, "%s MW res.Interfaces: %s\n", time.Now(), res.Interfaces)
 
 	// Add to the result the Interface as index of Interfaces
 	for i := range res.Interfaces {
@@ -607,8 +550,6 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 		return
 	}
 
-	w.Flush()
-
 	logger.WithFields(logrus.Fields{
 		logfields.ContainerID: ep.ContainerID}).Debug("Endpoint successfully created")
 	return cniTypes.PrintResult(res, n.CNIVersion)
@@ -622,21 +563,6 @@ func cmdDel(args *skel.CmdArgs) error {
 	// Note about when to return errors: kubelet will retry the deletion
 	// for a long time. Therefore, only return an error for errors which
 	// are guaranteed to be recoverable.
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	check(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-
-	_, err = fmt.Fprintf(w, "%s MW args.StdinData: %s\n", time.Now(), args)
-
 	n, err := types.LoadNetConf(args.StdinData)
 	if err != nil {
 		err = fmt.Errorf("unable to parse CNI configuration \"%s\": %s", args.StdinData, err)
@@ -716,6 +642,5 @@ func cmdDel(args *skel.CmdArgs) error {
 		log.WithError(err).Warningf("Unable to delete interface %s in namespace %q, will not delete interface", args.IfName, args.Netns)
 		// We are not returning an error as this is very unlikely to be recoverable
 	}
-	w.Flush()
 	return nil
 }

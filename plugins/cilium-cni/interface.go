@@ -15,12 +15,8 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
 	linuxrouting "github.com/cilium/cilium/pkg/datapath/linux/routing"
@@ -36,23 +32,8 @@ func checkerr(e error) {
 }
 
 func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, conf models.DaemonConfigurationStatus) error {
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	checkerr(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-
 	// If the gateway IP is not available, it is already set up
-	_, err = fmt.Fprintf(w, "%s MW interfaceAdd, ipam.Gateway: %s\n", time.Now(), ipam.Gateway)
 	if ipam.Gateway == "" {
-		_, err = fmt.Fprintf(w, "%s MW interfaceAdd, ipam.Gateway is empty: %s\n", time.Now(), ipam.Gateway)
 		return nil
 	}
 
@@ -66,10 +47,7 @@ func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, 
 	}
 
 	allCIDRs := make([]*net.IPNet, 0, len(ipam.Cidrs))
-	_, err = fmt.Fprintf(w, "%s MW interfaceAdd, allCIDRs: %s\n", time.Now(), allCIDRs)
-
 	for _, cidrString := range ipam.Cidrs {
-		_, err = fmt.Fprintf(w, "%s MW interfaceAdd, ipam.Cidrs loop, processing cidrString: %s\n", time.Now(), cidrString)
 		_, cidr, err := net.ParseCIDR(cidrString)
 		if err != nil {
 			return fmt.Errorf("invalid CIDR '%s': %s", cidrString, err)
@@ -77,18 +55,14 @@ func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, 
 		allCIDRs = append(allCIDRs, cidr)
 	}
 
-	_, err = fmt.Fprintf(w, "%s MW interfaceAdd, allCIDRs result after loop: %s\n", time.Now(), allCIDRs)
 	// Coalesce CIDRs into minimum set needed for route rules
 	// The routes set up here will be cleaned up by linuxrouting.Delete.
 	// Therefore the code here should be kept in sync with the deletion code.
 	ipv4CIDRs, _ := ip.CoalesceCIDRs(allCIDRs)
-	_, err = fmt.Fprintf(w, "%s MW interfaceAdd, ipv4CIDRs: %s\n", time.Now(), ipv4CIDRs)
 	cidrs := make([]string, 0, len(ipv4CIDRs))
 	for _, cidr := range ipv4CIDRs {
-		_, err = fmt.Fprintf(w, "%s MW interfaceAdd, ipv4CIDRs loop appending cidr: %s to existing ipv4CIDRs\n", time.Now(), cidr)
 		cidrs = append(cidrs, cidr.String())
 	}
-	_, err = fmt.Fprintf(w, "%s MW interfaceAdd, routingInfo.cidrs: %s\n", time.Now(), cidrs)
 	routingInfo, err := linuxrouting.NewRoutingInfo(
 		ipam.Gateway,
 		cidrs,
@@ -96,7 +70,6 @@ func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, 
 		ipam.InterfaceNumber,
 		masq,
 	)
-	_, err = fmt.Fprintf(w, "%s MW interfaceAdd, routingInfo: %s\n", time.Now(), routingInfo)
 	if err != nil {
 		return fmt.Errorf("unable to parse routing info: %v", err)
 	}
@@ -109,6 +82,5 @@ func interfaceAdd(ipConfig *current.IPConfig, ipam *models.IPAMAddressResponse, 
 		return fmt.Errorf("unable to install ip rules and routes: %s", err)
 	}
 
-	w.Flush()
 	return nil
 }

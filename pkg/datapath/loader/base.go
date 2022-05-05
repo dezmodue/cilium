@@ -120,35 +120,7 @@ func writePreFilterHeader(preFilter *prefilter.PreFilter, dir string) error {
 	return fw.Flush()
 }
 
-func checkerr(e error) {
-	if e != nil {
-		fmt.Errorf("error: %s", e)
-	}
-}
-
-func PointersOf(v interface{}) interface{} {
-	in := reflect.ValueOf(v)
-	out := reflect.MakeSlice(reflect.SliceOf(reflect.PtrTo(in.Type().Elem())), in.Len(), in.Len())
-	for i := 0; i < in.Len(); i++ {
-		out.Index(i).Set(in.Index(i).Addr())
-	}
-	return out.Interface()
-}
-
 func addENIRules(sysSettings []sysctl.Setting, nodeAddressing datapath.NodeAddressing) ([]sysctl.Setting, error) {
-
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	checkerr(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
 	// AWS ENI mode requires symmetric routing, see
 	// iptables.addCiliumENIRules().
 	// The default AWS daemonset installs the following rules that are used
@@ -197,8 +169,6 @@ func addENIRules(sysSettings []sysctl.Setting, nodeAddressing datapath.NodeAddre
 		Mask: net.CIDRMask(32, 32),
 	}
 
-	_, err = fmt.Fprintf(w, "%s MW base.addENIRules, cidrs before Coalesce, cidrs: %s\n", time.Now(), cidrs)
-
 	cidrs2 := make([]*net.IPNet, 0, 0)
 	for _, cidr := range cidrs {
 		cidrs2 = append(cidrs2, &cidr)
@@ -210,13 +180,11 @@ func addENIRules(sysSettings []sysctl.Setting, nodeAddressing datapath.NodeAddre
 	}
 
 	cidrs = cidrs3
-	_, err = fmt.Fprintf(w, "%s MW base.addENIRules, cidrs after Coalesce, cidrs: %s\n", time.Now(), cidrs)
 	for _, cidr := range cidrs {
 		if err = linuxrouting.SetupRules(&routerIP, &cidr, info.GetMac().String(), info.GetInterfaceNumber()); err != nil {
 			return nil, fmt.Errorf("unable to install ip rule for cilium_host: %w", err)
 		}
 	}
-	w.Flush()
 	return retSettings, nil
 }
 

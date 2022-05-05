@@ -15,13 +15,9 @@
 package linuxrouting
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/cilium/cilium/pkg/datapath/linux/linux_defaults"
 	"github.com/cilium/cilium/pkg/datapath/linux/route"
@@ -42,12 +38,6 @@ var (
 	log = logging.DefaultLogger.WithField(logfields.LogSubsys, "linux-routing")
 )
 
-func check(e error) {
-	if e != nil {
-		fmt.Errorf("error: %s", e)
-	}
-}
-
 // Configure sets up the rules and routes needed when running in ENI or
 // Azure IPAM mode.
 // These rules and routes direct egress traffic out of the interface and
@@ -59,21 +49,6 @@ func check(e error) {
 // info: The interface routing info used to create rules and routes.
 // mtu: The interface MTU.
 func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
-	prgname := filepath.Base(os.Args[0])
-	var filename string
-	if prgname == "cilium-agent" {
-		filename = "/host/opt/cni/bin/" + prgname + ".log"
-	} else {
-		filename = "/opt/cni/bin/" + prgname + ".log"
-	}
-	f, err := os.OpenFile(filename,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	check(err)
-	defer f.Close()
-	w := bufio.NewWriter(f)
-
-	_, err = fmt.Fprintf(w, "%s MW routing.Configure, routingInfo: %s\n", time.Now(), info)
-
 	if ip.To4() == nil {
 		log.WithFields(logrus.Fields{
 			"endpointIP": ip,
@@ -90,11 +65,9 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 		IP:   ip,
 		Mask: net.CIDRMask(32, 32),
 	}
-	_, err = fmt.Fprintf(w, "%s MW Configure ipWithMask, ip: %s,mask: %s\n", time.Now(), ipWithMask.IP, ipWithMask.Mask)
 
 	// On ingress, route all traffic to the endpoint IP via the main routing
 	// table. Egress rules are created in a per-ENI routing table.
-	_, err = fmt.Fprintf(w, "%s MW Configure Ingress Routes, Priority: %s,To: %s, Table: %s\n", time.Now(), linux_defaults.RulePriorityIngress, ipWithMask.IP, route.MainTable)
 	if err := route.ReplaceRule(route.Rule{
 		Priority: linux_defaults.RulePriorityIngress,
 		To:       &ipWithMask,
@@ -113,15 +86,11 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 		tableID = computeTableIDFromIfaceNumber(info.InterfaceNumber)
 	}
 
-	_, err = fmt.Fprintf(w, "%s MW Configure Egress Routes, egressPriority: %s,tableID: %s, compat: %s\n", time.Now(), egressPriority, tableID, compat)
-
 	if info.Masquerade {
-		_, err = fmt.Fprintf(w, "%s MW Masquerading true\n", time.Now())
 		// Lookup a VPC specific table for all traffic from an endpoint to the
 		// CIDR configured for the VPC on which the endpoint has the IP on.
 
 		for _, cidr := range info.IPv4CIDRs {
-			_, err = fmt.Fprintf(w, "%s MW info.Masquerade=true - egressPriority: %s, ipWithMask: %s, cidr: %s, tableID: %s\n", time.Now(), egressPriority, ipWithMask, cidr, tableID)
 			if err := route.ReplaceRule(route.Rule{
 				Priority: egressPriority,
 				From:     &ipWithMask,
@@ -133,7 +102,6 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 		}
 	} else {
 		// Lookup a VPC specific table for all traffic from an endpoint.
-		_, err = fmt.Fprintf(w, "%s MW info.Masquerade=false - egressPriority: %s, ipWithMask: %s, tableID: %s\n", time.Now(), egressPriority, ipWithMask, tableID)
 		if err := route.ReplaceRule(route.Rule{
 			Priority: egressPriority,
 			From:     &ipWithMask,
@@ -155,7 +123,6 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 	}); err != nil {
 		return fmt.Errorf("unable to add L2 nexthop route: %s", err)
 	}
-	_, err = fmt.Fprintf(w, "%s MW Nexthop route - LinkIndex: %s, Dst: %s, Scope: %s, Table: %s\n", time.Now(), ifindex, &net.IPNet{IP: info.IPv4Gateway, Mask: net.CIDRMask(32, 32)}, netlink.SCOPE_LINK, tableID)
 
 	// Default route to the VPC or subnet gateway
 	if err := netlink.RouteReplace(&netlink.Route{
@@ -165,8 +132,6 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 	}); err != nil {
 		return fmt.Errorf("unable to add L2 nexthop route: %s", err)
 	}
-	_, err = fmt.Fprintf(w, "%s MW Default route - Dst: %s, Table: %s, Gw: %s\n", time.Now(), &net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}, tableID, info.IPv4Gateway)
-	w.Flush()
 	return nil
 }
 
