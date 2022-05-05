@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/cilium/pkg/datapath"
 	linuxrouting "github.com/cilium/cilium/pkg/datapath/linux/routing"
 	"github.com/cilium/cilium/pkg/defaults"
+	iputil "github.com/cilium/cilium/pkg/ip"
 	"github.com/cilium/cilium/pkg/ipam"
 	ipamOption "github.com/cilium/cilium/pkg/ipam/option"
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -250,7 +251,20 @@ func (d *Daemon) allocateDatapathIPs(family datapath.NodeAddressingFamily) (rout
 		}
 		node.SetRouterInfo(routingInfo)
 	}
-
+	cidrs := make([]*net.IPNet, 0, len(result.CIDRs))
+	for _, k := range result.CIDRs {
+		var s net.IPNet
+		ip, mask, _ := net.ParseCIDR(k)
+		s.IP = ip
+		s.Mask = mask.Mask
+		cidrs = append(cidrs, &s)
+	}
+	resultcidr, _ := iputil.CoalesceCIDRs(cidrs)
+	newresult := make([]string, len(resultcidr))
+	for i, k := range resultcidr {
+		newresult[i] = k.String()
+	}
+	result.CIDRs = newresult
 	return
 }
 
@@ -259,6 +273,20 @@ func (d *Daemon) allocateHealthIPs() error {
 	if option.Config.EnableHealthChecking && option.Config.EnableEndpointHealthChecking {
 		if option.Config.EnableIPv4 {
 			result, err := d.ipam.AllocateNextFamilyWithoutSyncUpstream(ipam.IPv4, "health")
+			cidrs := make([]*net.IPNet, 0, len(result.CIDRs))
+			for _, k := range result.CIDRs {
+				var s net.IPNet
+				ip, mask, _ := net.ParseCIDR(k)
+				s.IP = ip
+				s.Mask = mask.Mask
+				cidrs = append(cidrs, &s)
+			}
+			resultcidr, _ := iputil.CoalesceCIDRs(cidrs)
+			newresult := make([]string, len(resultcidr))
+			for i, k := range resultcidr {
+				newresult[i] = k.String()
+			}
+			result.CIDRs = newresult
 			if err != nil {
 				return fmt.Errorf("unable to allocate health IPs: %s,see https://cilium.link/ipam-range-full", err)
 			}
